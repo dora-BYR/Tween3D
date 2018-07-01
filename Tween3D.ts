@@ -1,0 +1,164 @@
+namespace util {
+    /**
+     * 3D缓动类
+     * by longhui
+     * Email: buptlong@126.com
+     * (c) copyright 2014 - 2035
+     * All Rights Reserved. 
+     * 
+     */
+    export class Tween3D extends Laya.HashObject {
+        /** 缓动映射表 */
+        private static tweenMaps: any = {};
+        /** 缓动目标 */
+        private target: Laya.Sprite3D;
+        /** 缓动 */
+        private tween: Laya.Tween;
+        /** 缓动数据 */
+        private data;
+        /** 缩放属性 */
+        public scaleX: number = 1;
+        public scaleY: number = 1;
+        public scaleZ: number = 1;
+        /** 位置属性 */
+        public posX: number = 0;
+        public posY: number = 0;
+        public posZ: number = 0;
+        public posVec3: Laya.Vector3;
+        /** 欧拉角属性 */
+        public eulerX: number = 0;
+        public eulerY: number = 0;
+        public eulerZ: number = 0;
+        public eulerVec3: Laya.Vector3;
+
+        constructor(target: Laya.Sprite3D, data: any) {
+            super();
+            this.target = target;
+            this.data = data;
+        }
+        /** 到达缓动 */
+        public static to(target: Laya.Sprite3D, data: any, duration: number, ease?: Function, completeHandler?: Laya.Handler, delay?: number): Tween3D {
+            let Tween3D = new util.Tween3D(target, data);
+            return Tween3D._to(duration, ease, completeHandler, delay);
+        }
+
+        /** 到达缓动 */
+        private _to(duration: number, ease?: Function, completeHandler?: Laya.Handler, delay?: number): Tween3D {
+            let data = {};
+            // 缩放
+            if (this.data.localScale) {
+                let curScale = this.target.transform.localScale;
+                this.scaleX = curScale.x;
+                this.scaleY = curScale.y;
+                this.scaleZ = curScale.z;
+                data["scaleX"] = this.data.localScale.x;
+                data["scaleY"] = this.data.localScale.y;
+                data["scaleZ"] = this.data.localScale.z;                
+            }
+            // 位置
+            if (this.data.position) {
+                let curPos = this.target.transform.position;
+                this.posX = curPos.x;
+                this.posY = curPos.y;
+                this.posZ = curPos.z;
+                data["posX"] = this.data.position.x;
+                data["posY"] = this.data.position.y;
+                data["posZ"] = this.data.position.z;
+                this.posVec3 = new Laya.Vector3(this.posX, this.posY, this.posZ);
+            }
+            // 欧拉角
+            if (this.data.localRotationEuler) {
+                let curEuler = this.target.transform.localRotationEuler;
+                this.eulerX = curEuler.x;
+                this.eulerY = curEuler.y;
+                this.eulerZ = curEuler.z;
+                data["eulerX"] = this.data.localRotationEuler.x;
+                data["eulerY"] = this.data.localRotationEuler.y;
+                data["eulerZ"] = this.data.localRotationEuler.z;
+                this.eulerVec3 = new Laya.Vector3(this.eulerX, this.eulerY, this.eulerZ);
+            }
+            this.tween = Laya.Tween.to(this, data, duration, ease, Laya.Handler.create(this, this.onTweenCompleted, [function() {
+                if (completeHandler) {
+                    completeHandler.run();
+                }
+            }]), delay, true);
+            let key = "" + this.target.hashCode;
+            Tween3D.tweenMaps[key] = Tween3D.tweenMaps[key] || {};
+            Tween3D.tweenMaps[key]["" + this.hashCode] = this;
+            Laya.timer.frameLoop(1, this, this.onUpdate);
+            return this;
+        }
+
+        /** 结束 */
+        private onTweenCompleted(completeFunction) {
+            Laya.timer.clear(this, this.onUpdate);
+            Laya.Tween.clear(this.tween);
+            this.tween = null;
+            if (completeFunction) {
+                completeFunction();
+            }
+        }
+
+        /** 停止缓动 */
+        public clear() {
+            Laya.timer.clear(this, this.onUpdate);
+            if (this.tween){
+                Laya.Tween.clear(this.tween);
+                this.tween = null;
+            }
+        }
+
+        /** 停止目标身上的缓动 */
+        public static clearTargetTween(target: Laya.Sprite3D, tween3D?: Tween3D) {
+            if (target && Tween3D.tweenMaps["" + target.hashCode]) {
+                let key = "" + target.hashCode;
+                let tween3DArr = Tween3D.tweenMaps[key];
+                if (tween3D) {
+                    for (let tkey in tween3DArr) {
+                        if (tween3DArr.hasOwnProperty(tkey)) {
+                            let t3d = tween3DArr[tkey];
+                            if (t3d.hashCode == tween3D.hashCode) {
+                                t3d.clear();
+                                // Tween3D.tweenMaps[key][tkey] = null;
+                                return;
+                            }
+                        }
+                    }
+                }else {
+                    for (let tkey in tween3DArr) {
+                        if (tween3DArr.hasOwnProperty(tkey)) {
+                            let t3d = tween3DArr[tkey];
+                            t3d.clear();
+                            // Tween3D.tweenMaps[key][tkey] = null;
+                        }
+                    }
+                }
+            }
+        }
+
+        /** 每帧刷新 */
+        private onUpdate() {
+            if (this.target) {
+                if (this.data.localScale && this.scaleX != null && this.scaleY != null && this.scaleZ != null) {
+                    this.target.transform.localScale.x = this.scaleX;
+                    this.target.transform.localScale.y = this.scaleY;
+                    this.target.transform.localScale.z = this.scaleZ;
+                }
+                if (this.data.position && this.posX != null && this.posY != null && this.posZ != null) {
+                    this.posVec3.x = this.posX;
+                    this.posVec3.y = this.posY;
+                    this.posVec3.z = this.posZ;
+                    let posNag = base.f.multiVec3(this.target.transform.position, new Laya.Vector3(-1, -1, -1));
+                    let offsetPos = base.f.addVec3(this.posVec3, posNag);
+                    this.target.transform.translate(offsetPos);
+                }
+                if (this.data.localRotationEuler && this.eulerX != null && this.eulerY != null && this.eulerZ != null) {
+                    this.eulerVec3.x = this.eulerX;
+                    this.eulerVec3.y = this.eulerY;
+                    this.eulerVec3.z = this.eulerZ;
+                    this.target.transform.localRotationEuler = this.eulerVec3;
+                }
+            }
+        }
+    }
+}
