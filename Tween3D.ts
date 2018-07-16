@@ -25,6 +25,11 @@ namespace util {
         public posY: number = 0;
         public posZ: number = 0;
         public posVec3: Laya.Vector3;
+        /** 世界位置属性 */
+        public wposX: number = 0;
+        public wposY: number = 0;
+        public wposZ: number = 0;
+        public wposVec3: Laya.Vector3;
         /** 欧拉角属性 */
         public eulerX: number = 0;
         public eulerY: number = 0;
@@ -56,15 +61,26 @@ namespace util {
                 data["scaleZ"] = this.data.localScale.z;                
             }
             // 位置
-            if (this.data.position) {
-                let curPos = this.target.transform.position;
+            if (this.data.localPosition) {
+                let curPos = this.target.transform.localPosition;
                 this.posX = curPos.x;
                 this.posY = curPos.y;
                 this.posZ = curPos.z;
-                data["posX"] = this.data.position.x;
-                data["posY"] = this.data.position.y;
-                data["posZ"] = this.data.position.z;
+                data["posX"] = this.data.localPosition.x;
+                data["posY"] = this.data.localPosition.y;
+                data["posZ"] = this.data.localPosition.z;
                 this.posVec3 = new Laya.Vector3(this.posX, this.posY, this.posZ);
+            }
+            // 世界位置
+            if (this.data.position) {
+                let curPos = this.target.transform.position;
+                this.wposX = curPos.x;
+                this.wposY = curPos.y;
+                this.wposZ = curPos.z;
+                data["wposX"] = this.data.position.x;
+                data["wposY"] = this.data.position.y;
+                data["wposZ"] = this.data.position.z;
+                this.wposVec3 = new Laya.Vector3(this.wposX, this.wposY, this.wposZ);
             }
             // 欧拉角
             if (this.data.localRotationEuler) {
@@ -77,6 +93,7 @@ namespace util {
                 data["eulerZ"] = this.data.localRotationEuler.z;
                 this.eulerVec3 = new Laya.Vector3(this.eulerX, this.eulerY, this.eulerZ);
             }
+            data["update"] = Laya.Handler.create(this, this.onUpdate, null, false);
             this.tween = Laya.Tween.to(this, data, duration, ease, Laya.Handler.create(this, this.onTweenCompleted, [function() {
                 if (completeHandler) {
                     completeHandler.run();
@@ -85,15 +102,13 @@ namespace util {
             let key = "" + this.target.hashCode;
             Tween3D.tweenMaps[key] = Tween3D.tweenMaps[key] || {};
             Tween3D.tweenMaps[key]["" + this.hashCode] = this;
-            Laya.timer.frameLoop(1, this, this.onUpdate);
+            // Laya.timer.frameLoop(1, this, this.onUpdate);
             return this;
         }
 
         /** 结束 */
         private onTweenCompleted(completeFunction) {
-            Laya.timer.clear(this, this.onUpdate);
-            Laya.Tween.clear(this.tween);
-            this.tween = null;
+            this.clear();
             if (completeFunction) {
                 completeFunction();
             }
@@ -144,13 +159,23 @@ namespace util {
                     this.target.transform.localScale.y = this.scaleY;
                     this.target.transform.localScale.z = this.scaleZ;
                 }
-                if (this.data.position && this.posX != null && this.posY != null && this.posZ != null) {
+                if (this.data.localPosition && this.posX != null && this.posY != null && this.posZ != null) {
                     this.posVec3.x = this.posX;
                     this.posVec3.y = this.posY;
                     this.posVec3.z = this.posZ;
-                    let posNag = base.f.multiVec3(this.target.transform.position, new Laya.Vector3(-1, -1, -1));
-                    let offsetPos = base.f.addVec3(this.posVec3, posNag);
-                    this.target.transform.translate(offsetPos);
+                    this.target.transform.localPosition = this.posVec3;
+                    // let posNag = base.f.multiVec3(this.target.transform.localPosition, new Laya.Vector3(-1, -1, -1));
+                    // let offsetPos = base.f.addVec3(this.posVec3, posNag);
+                    // this.target.transform.translate(offsetPos, true);
+                }
+                if (this.data.position && this.wposX != null && this.wposY != null && this.wposZ != null) {
+                    this.wposVec3.x = this.wposX;
+                    this.wposVec3.y = this.wposY;
+                    this.wposVec3.z = this.wposZ;
+                    this.target.transform.position = this.wposVec3;
+                    // let posNag = base.f.multiVec3(this.target.transform.position, new Laya.Vector3(-1, -1, -1));
+                    // let offsetPos = base.f.addVec3(this.posVec3, posNag);
+                    // this.target.transform.translate(offsetPos, true);
                 }
                 if (this.data.localRotationEuler && this.eulerX != null && this.eulerY != null && this.eulerZ != null) {
                     this.eulerVec3.x = this.eulerX;
